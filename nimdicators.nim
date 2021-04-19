@@ -1,254 +1,4 @@
-import nimdicators/[cImports, indicators], sequtils
-
-
-proc toCarray(input: seq[float]): seq[cdouble] =
-  var result = newSeq[cdouble]()
-  for idx, item in input:
-    result.add(cdouble(item))
-  return result
-
-proc fromCarray(input: seq[cdouble]): seq[float] =
-  var result = newSeq[float]()
-  for idx, item in input:
-    result.add(float(item))
-  return result
-
-
-########################################################
-#Function Factories go here
-
-#factory for functions that take in 1 input, 0 options and 1 output
-proc fnFactoryOneInNoOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(fInput: seq[float]): seq[float] =
-    let 
-      input = toCarray(fInput)
-      options = cast[cdouble](0.0)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = input.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(input.len), inputAddr.addr, options.unsafeAddr, outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-#factory for functions that take in 4 inputs, 0 options and 1 output
-proc fnFactoryFourInNoOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(highInput: seq[float], lowInput: seq[float], close: seq[float], volume: seq[float]): seq[float] =
-    let 
-      hIn = toCarray(highInput)
-      lIn = toCarray(lowInput)
-      cIn = toCarray(close)
-      vIn = toCarray(volume)
-
-      input = @[hIn[0].unsafeAddr, lIn[0].unsafeAddr, cIn[0].unsafeAddr, vIn[0].unsafeAddr]
-      options = cast[cdouble](0.0)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = close.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(close.len), inputAddr, options.unsafeAddr, outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-#factory for functions that take in 2 inputs, 0 options and 1 output
-proc fnFactoryTwoInNoOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(uInput: seq[float], vInput: seq[float]): seq[float] =
-    let 
-      uIn = toCarray(uInput)
-      vIn = toCarray(uInput)
-
-      input = @[uIn[0].unsafeAddr, vIn[0].unsafeAddr]
-      options = cast[cdouble](0.0)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = uIn.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(uIn.len), inputAddr, options.unsafeAddr, outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-
-#factory for functions that take in 3 inputs, 1 options and 1 output
-proc fnFactoryThreeInOneOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(highInput: seq[float], lowInput: seq[float], close: seq[float], period: float): seq[float] =
-    let 
-      hIn = toCarray(highInput)
-      lIn = toCarray(lowInput)
-      cIn = toCarray(close)
-
-      input = @[hIn[0].unsafeAddr, lIn[0].unsafeAddr, cIn[0].unsafeAddr]
-      options = cdouble(period)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = close.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(close.len), inputAddr, options.unsafeAddr, outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-
-#factory for functions that take in 1 input, 2 options and 1 output
-proc fnFactoryOneInTwoOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(fInput: seq[float], optOne: float, optTwo: float): seq[float] =
-    let 
-      input = toCarray(fInput)
-      aOpt = cdouble(optOne)
-      bOpt = cdouble(optTwo)
-      options = @[aOpt.unsafeAddr, bOpt.unsafeAddr]
-
-    let
-     start = startFunc(options[0])                     
-     outputLen = input.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(input.len), inputAddr.addr, options[0], outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-
-#factory for functions that take in 2 inputs, 1 options and 2 output
-proc fnFactoryTwoInOneOptTwoOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(highInput: seq[float], lowInput: seq[float], period: float): seq[seq[float]] =
-    let 
-      hIn = toCarray(highInput)
-      lIn = toCarray(lowInput)
-
-      input = @[hIn[0].unsafeAddr, lIn[0].unsafeAddr]
-      options = cdouble(period)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = lowInput.len - start
-
-    var firstResult = newSeq[cdouble](outputLen) 
-    var secondResult = newSeq[cdouble](outputLen)
-
-    var resBoth = @[firstResult[0].unsafeAddr, secondResult[0].unsafeAddr]
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = resBoth[0].unsafeAddr
-
-
-    let res = calcFunc(cint(lowInput.len), inputAddr, options.unsafeAddr, outputAddr)
-    assert(res == TI_OKAY)
-
-    let
-      resOne = fromCarray(firstResult)
-      resTwo = fromCarray(secondResult)
-    return @[resOne, resTwo]
-
-
-
-#factory for functions that take in 2 inputs, 1 options and 1 output
-proc fnFactoryTwoInOneOptOneOut(fn: string): proc =
-  let 
-    indicator = getIndicator(fn)
-    startFunc = indicator.start
-    calcFunc = indicator.indicator
-
-  return proc(uInput: seq[float], vInput: seq[float], option: float): seq[float] =
-    let 
-      uIn = toCarray(uInput)
-      vIn = toCarray(uInput)
-
-      input = @[uIn[0].unsafeAddr, vIn[0].unsafeAddr]
-      options = cast[cdouble](option)
-
-    let
-     start = startFunc(options.unsafeAddr)                     
-     outputLen = uIn.len - start
-
-    result.setLen(outputLen)                                                              
-
-    var
-      inputAddr = input[0].unsafeAddr
-      outputAddr = result[0].addr
-
-    let res = calcFunc(cint(uIn.len), inputAddr, options.unsafeAddr, outputAddr.addr)
-    assert(res == TI_OKAY)
-    return fromCarray(result)
-
-
-
-
-
-
-
-
-
-
-#######################################################
-
-
+import nimdicators/[fnFactory], sequtils
 
 
 # Vector Absolute Value 
@@ -350,6 +100,492 @@ let aroonosc* = fnFactoryTwoInOneOptOneOut("aroonosc")
 let asin* = fnFactoryOneInNoOptOneOut("asin")
 
 
+#Vector Arctangent 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: atan 
+let atan* = fnFactoryOneInNoOptOneOut("atan")
+
+
+#Average True Range 
+#Type: indicator 
+#Input arrays: 3    Options: 1    Output arrays: 1 
+#Inputs: high, low, close 
+#Options: period 
+#Outputs: atr 
+let atr* = fnFactoryThreeInOneOptOneOut("atr")
+
+
+#Average Price 
+#Type: overlay 
+#Input arrays: 4    Options: 0    Output arrays: 1 
+#Inputs: open, high, low, close 
+#Options: none 
+#Outputs: avgprice 
+let avgprice* = fnFactoryFourInNoOptOneOut("avgprice")
+
+
+#Bollinger Bands 
+#Type: overlay 
+#Input arrays: 1    Options: 2    Output arrays: 3 
+#Inputs: real 
+#Options: period, stddev 
+#Outputs: bbands_lower, bbands_middle, bbands_upper 
+let bbands* = fnFactoryOneInTwoOptThreeOut("bbands")
+
+
+#Balance of Power 
+#Type: indicator 
+#Input arrays: 4    Options: 0    Output arrays: 1 
+#Inputs: open, high, low, close 
+#Options: none 
+#Outputs: bop 
+let bop* = fnFactoryFourInNoOptOneOut("bop")
+
+#Commodity Channel Index 
+#Type: indicator 
+#Input arrays: 3    Options: 1    Output arrays: 1 
+#Inputs: high, low, close 
+#Options: period 
+#Outputs: cci 
+let cci* = fnFactoryThreeInOneOptOneOut("cci")
+
+
+#Vector Ceiling 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: ceil 
+let ceil* = fnFactoryOneInNoOptOneOut("ceil")
+
+
+#Chande Momentum Oscillator 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: cmo 
+let cmo* = fnFactoryOneInOneOptOneOut("cmo")
+
+
+#Vector Cosine 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: cos 
+let cos* = fnFactoryOneInNoOptOneOut("cos")
+
+
+#Vector Hyperbolic Cosine 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: cosh 
+let cosh* = fnFactoryOneInNoOptOneOut("cosh")
+
+
+#Crossany 
+#Type: math 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: real, real 
+#Options: none 
+#Outputs: crossany 
+let crossany* = fnFactoryTwoInNoOptOneOut("crossany")
+
+
+#Crossover 
+#Type: math 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: real, real 
+#Options: none 
+#Outputs: crossover 
+let crossover* = fnFactoryTwoInNoOptOneOut("crossover")
+
+
+#Chaikins Volatility 
+#Type: indicator 
+#Input arrays: 2    Options: 1    Output arrays: 1 
+#Inputs: high, low 
+#Options: period 
+#Outputs: cvi 
+let cvi* = fnFactoryTwoInOneOptOneOut("cvi")
+
+
+#Linear Decay 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: decay 
+let decay* = fnFactoryOneInOneOptOneOut("decay")
+
+
+#Double Exponential Moving Average 
+#Type: overlay 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: dema 
+let dema* = fnFactoryOneInOneOptOneOut("dema")
+
+
+#Directional Indicator 
+#Type: indicator 
+#Input arrays: 3    Options: 1    Output arrays: 2 
+#Inputs: high, low, close 
+#Options: period 
+#Outputs: plus_di, minus_di 
+let di* = fnFactoryThreeInOneOptTwoOut("di")
+
+
+#Vector Division 
+#Type: simple 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: real, real 
+#Options: none 
+#Outputs: div 
+let `div`* = fnFactoryTwoInNoOptOneOut("div")
+
+
+#Directional Movement 
+#Type: indicator 
+#Input arrays: 2    Options: 1    Output arrays: 2 
+#Inputs: high, low 
+#Options: period 
+#Outputs: plus_dm, minus_dm 
+let dm* = fnFactoryTwoInOneOptTwoOut("dm")
+
+
+#Detrended Price Oscillator 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: dpo 
+let dpo* = fnFactoryOneInOneOptOneOut("dpo")
+
+
+#Directional Movement Index 
+#Type: indicator 
+#Input arrays: 3    Options: 1    Output arrays: 1 
+#Inputs: high, low, close 
+#Options: period 
+#Outputs: dx 
+let dx* = fnFactoryThreeInOneOptOneOut("dx")
+
+
+#Exponential Decay 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: edecay 
+let edecay* = fnFactoryOneInOneOptOneOut("edecay")
+
+
+#Exponential Moving Average 
+#Type: overlay 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: ema 
+let ema* = fnFactoryOneInOneOptOneOut("ema")
+
+
+#Ease of Movement 
+#Type: indicator 
+#Input arrays: 3    Options: 0    Output arrays: 1 
+#Inputs: high, low, volume 
+#Options: none 
+#Outputs: emv 
+let emv* = fnFactoryThreeInNoOptOneOut("emv")
+
+
+#Vector Exponential 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: exp 
+let exp* = fnFactoryOneInNoOptOneOut("exp")
+
+
+#Fisher Transform 
+#Type: indicator 
+#Input arrays: 2    Options: 1    Output arrays: 2 
+#Inputs: high, low 
+#Options: period 
+#Outputs: fisher, fisher_signal 
+let fisher* = fnFactoryTwoInOneOptTwoOut("fisher")
+
+
+#Vector Floor 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: floor 
+let floor* = fnFactoryOneInNoOptOneOut("floor")
+
+
+#Forecast Oscillator 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: fosc 
+let fosc* = fnFactoryOneInOneOptOneOut("fosc")
+
+
+#Hull Moving Average 
+#Type: overlay 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: hma 
+let hma* = fnFactoryOneInOneOptOneOut("hma")
+
+
+#Kaufman Adaptive Moving Average 
+#Type: overlay 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: kama 
+let kama* = fnFactoryOneInOneOptOneOut("kama")
+
+
+#Klinger Volume Oscillator 
+#Type: indicator 
+#Input arrays: 4    Options: 2    Output arrays: 1 
+#Inputs: high, low, close, volume 
+#Options: short period, long period 
+#Outputs: kvo 
+let kvo* = fnFactoryFourInTwoOptOneOut("kvo")
+
+
+#Lag 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: lag 
+let lag* = fnFactoryOneInOneOptOneOut("lag")
+
+
+#Linear Regression 
+#Type: overlay 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: linreg 
+let linreg* = fnFactoryOneInOneOptOneOut("linreg")
+
+
+#Linear Regression Intercept 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: linregintercept 
+let linregintercept* = fnFactoryOneInOneOptOneOut("linregintercept")
+
+
+#Linear Regression Slope 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: linregslope 
+let linregslope* = fnFactoryOneInOneOptOneOut("linregslope")
+
+
+#Vector Natural Log 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: ln 
+let ln* = fnFactoryOneInNoOptOneOut("ln")
+
+
+#Vector Base-10 Log 
+#Type: simple 
+#Input arrays: 1    Options: 0    Output arrays: 1 
+#Inputs: real 
+#Options: none 
+#Outputs: log10 
+let log10* = fnFactoryOneInNoOptOneOut("log10")
+
+
+#Moving Average ConvergenceDivergence 
+#Type: indicator 
+#Input arrays: 1    Options: 3    Output arrays: 3 
+#Inputs: real 
+#Options: short period, long period, signal period 
+#Outputs: macd, macd_signal, macd_histogram 
+let macd* = fnFactoryOneInThreeOptThreeOut("macd")
+
+
+
+#Market Facilitation Index 
+#Type: indicator 
+#Input arrays: 3    Options: 0    Output arrays: 1 
+#Inputs: high, low, volume 
+#Options: none 
+#Outputs: marketfi 
+let marketfi* = fnFactoryThreeInNoOptOneOut("marketfi")
+
+
+#Mass Index 
+#Type: indicator 
+#Input arrays: 2    Options: 1    Output arrays: 1 
+#Inputs: high, low 
+#Options: period 
+#Outputs: mass 
+let mass* = fnFactoryTwoInOneOptOneOut("mass")
+
+
+#Maximum In Period 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: max 
+let max* = fnFactoryOneInOneOptOneOut("max")
+
+
+#Mean Deviation Over Period 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: md 
+let md* = fnFactoryOneInOneOptOneOut("md")
+
+
+#Median Price 
+#Type: overlay 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: high, low 
+#Options: none 
+#Outputs: medprice 
+let medprice* = fnFactoryTwoInNoOptOneOut("medprice")
+
+
+#Money Flow Index 
+#Type: indicator 
+#Input arrays: 4    Options: 1    Output arrays: 1 
+#Inputs: high, low, close, volume 
+#Options: period 
+#Outputs: mfi 
+let mfi* = fnFactoryFourInOneOptOneOut("mfi")
+
+
+#Minimum In Period 
+#Type: math 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: min 
+let min* = fnFactoryOneInOneOptOneOut("min")
+
+
+#Momentum 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 1 
+#Inputs: real 
+#Options: period 
+#Outputs: mom 
+let mom* = fnFactoryOneInOneOptOneOut("mom")
+
+
+#Mesa Sine Wave 
+#Type: indicator 
+#Input arrays: 1    Options: 1    Output arrays: 2 
+#Inputs: real 
+#Options: period 
+#Outputs: msw_sine, msw_lead 
+let msw* = fnFactoryOneInOneOptTwoOut("msw")
+
+
+#Vector Multiplication 
+#Type: simple 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: real, real 
+#Options: none 
+#Outputs: mul 
+let mul* = fnFactoryTwoInNoOptOneOut("mul")
+
+
+#Normalized Average True Range 
+#Type: indicator 
+#Input arrays: 3    Options: 1    Output arrays: 1 
+#Inputs: high, low, close 
+#Options: period 
+#Outputs: natr 
+let natr* = fnFactoryThreeInOneOptOneOut("natr")
+
+
+#Negative Volume Index 
+#Type: indicator 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: close, volume 
+#Options: none 
+#Outputs: nvi 
+let nvi* = fnFactoryTwoInNoOptOneOut("nvi")
+
+
+#On Balance Volume 
+#Type: indicator 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: close, volume 
+#Options: none 
+#Outputs: obv 
+let obv* = fnFactoryTwoInNoOptOneOut("obv")
+
+
+#Percentage Price Oscillator 
+#Type: indicator 
+#Input arrays: 1    Options: 2    Output arrays: 1 
+#Inputs: real 
+#Options: short period, long period 
+#Outputs: ppo 
+let ppo* = fnFactoryOneInTwoOptOneOut("ppo")
+
+
+#Parabolic SAR 
+#Type: overlay 
+#Input arrays: 2    Options: 2    Output arrays: 1 
+#Inputs: high, low 
+#Options: acceleration factor step, acceleration factor maximum 
+#Outputs: psar 
+let psar* = fnFactoryTwoInTwoOptOneOut("psar")
+
+
+#Positive Volume Index 
+#Type: indicator 
+#Input arrays: 2    Options: 0    Output arrays: 1 
+#Inputs: close, volume 
+#Options: none 
+#Outputs: pvi 
+let pvi* = fnFactoryTwoInNoOptOneOut("pvi")
+
+
+#Qstick 
+#Type: indicator 
+#Input arrays: 2    Options: 1    Output arrays: 1 
+#Inputs: open, close 
+#Options: period 
+#Outputs: qstick 
+let qstick* = fnFactoryTwoInOneOptOneOut("qstick")
+
+
 
 
 
@@ -361,31 +597,19 @@ let dataIn = @[float 0.2, 0.3, 0.4, -0.5]
 
 let highIn = @[float 82.15, 81.89, 83.03, 83.30, 83.85, 83.90, 83.33, 84.30, 84.84, 85.00, 85.90, 86.58, 86.98, 88.00, 87.87]
 let lowIn = @[float 81.29, 80.64, 81.31, 82.65, 83.07, 83.11, 82.49, 82.30, 84.15, 84.11, 84.03, 85.39, 85.76, 87.17, 87.01]
-let close = @[float 81.59, 81.06, 82.87, 83.00, 83.61, 83.15, 82.84, 83.99, 84.55, 84.36]
-let volume = @[float 5653100.0, 6447400.0, 7690900.0, 3831400.0, 4455100.0]
+let close = @[float 81.59, 81.06, 82.87, 83.00, 83.61, 83.15, 82.84, 83.99, 84.55, 84.36, 85.53, 86.54, 86.89, 87.77, 87.29]
+let open = @[float 81.85, 81.20, 81.55, 82.91, 83.10, 83.41, 82.71, 82.70, 84.20, 84.25, 84.03, 85.45, 86.18, 88.00, 87.60]
+let volume = @[float 5653100.0, 6447400.0, 7690900.0, 3831400.0, 4455100.0, 3798000.0, 3936200.0, 4732000.0, 4841300.0, 3915300.0, 6830800.0, 6694100.0, 5293600.0, 7985800.0, 4807900.0 ]
 
 
 
-#options param passed into tulip indicator functions
-let options: cdouble = 3                            
-
-
-proc ema*(input: seq[cdouble], options: cdouble): seq[cdouble] =  
-  #calculates the length of the resulting seq
-  let
-   start = ti_sma_start(options.unsafeAddr)                     
-   outputLen = input.len - start
-      
-  result.setLen(outputLen)                                                              
-                 
-  #getting the adresses of the first elem in start/finish arrays
-  var
-    inputAddr = input[0].unsafeAddr
-    outputAddr = result[0].addr
-
-  #the res variable will return error messages that should map to   
-  let res = ti_sma(cint(input.len), inputAddr.addr, options.unsafeAddr, outputAddr.addr)
-  assert(res == TI_OKAY)
 
 when isMainModule:
-  echo asin(dataIn)
+#Not Right Numbers:
+#psar
+#pvi
+#qstick
+  echo ppo(close, 2, 5)
+
+
+
