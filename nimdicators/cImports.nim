@@ -1,7 +1,5 @@
 import nimterop/cimport, os
 
-# compile with nim c -d:headerGit cImports.nim
-
 echo currentSourcePath
 
 const 
@@ -11,8 +9,6 @@ static:
   cDebug()
 
 
-#static:
-#  gitPull("https://github.com/TulipCharts/tulipindicators", outdir= baseDir)
 
 
 cCompile(baseDir/"tiamagamation.c")
